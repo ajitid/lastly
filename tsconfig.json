@@ -1,0 +1,25 @@
+{
+  "compilerOptions": {
+    // google to find out what TS config will be best for a Node version, like https://stackoverflow.com/q/72380007
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "Node",
+    "outDir": "dist",
+    "sourceMap": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "strict": true,
+    "noImplicitReturns": true,
+    "noUncheckedIndexedAccess": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "~/*": ["src/*"]
+    }
+  },
+  "exclude": ["node_modules"],
+  "include": ["src"]
+}
