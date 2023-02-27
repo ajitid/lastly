@@ -62,6 +62,15 @@ interface StreamingLinks {
     - give a type such that each can be undefined (so like { spotify?: {properties} }) because they _can be_
   */
   linksByPlatform: Record<string, { url: string }>;
+  entitiesByUniqueId: Record<string, { thumbnailUrl: string }>;
+}
+
+interface Song {
+  title: string;
+  artist: string;
+  album: string;
+  links: Record<string, string>;
+  coverArt: Record<"small" | "medium" | "large", string> & { extralarge?: string };
 }
 
 const dotenvResult = dotenv.config({ path: ".env" });
@@ -106,14 +115,24 @@ async function getSongLinks() {
     return null;
   }
 
-  const songLinks: Record<string, string> = { lastfm: lastTrack.url };
+  const song: Song = {
+    title: lastTrack.name,
+    album: lastTrack.album["#text"],
+    artist: lastTrack.artist["#text"],
+    links: { lastfm: lastTrack.url },
+    coverArt: {
+      small: lastTrack.image.filter((im) => im.size === "medium")[0]!["#text"],
+      medium: lastTrack.image.filter((im) => im.size === "large")[0]!["#text"],
+      large: lastTrack.image.filter((im) => im.size === "extralarge")[0]!["#text"],
+    },
+  };
 
   const { body } = await got(lastTrack.url);
   const $ = loadHtml(body);
   const spotifyLink = $(".play-this-track-playlink--spotify").attr("href");
   if (spotifyLink === undefined) {
     console.log("spotify link doesn't exist for", lastTrack.name);
-    return songLinks;
+    return song;
   }
 
   // let's don't define country here and let it default to US, as it has most songs present
@@ -123,10 +142,15 @@ async function getSongLinks() {
     },
   }).json();
 
-  for (const [platform, { url }] of Object.entries(streamingLinks)) {
-    songLinks[platform] = url;
+  const spotifyEntity = Object.keys(streamingLinks.entitiesByUniqueId).filter((ent) =>
+    ent.startsWith("SPOTIFY_SONG::")
+  )[0]!;
+  song.coverArt.extralarge = streamingLinks.entitiesByUniqueId[spotifyEntity]!.thumbnailUrl;
+
+  for (const [platform, { url }] of Object.entries(streamingLinks.linksByPlatform)) {
+    song.links[platform] = url;
   }
-  return songLinks;
+  return song;
 }
 
 async function main() {
