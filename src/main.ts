@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import got from "got";
-import { load as loadHtml } from "cheerio";
+// import { load as loadHtml } from "cheerio";
 
 interface Config {
   readonly apiKey: string;
@@ -128,9 +128,32 @@ async function getSongLinks() {
   };
 
   const { body } = await got(lastTrack.url);
-  const $ = loadHtml(body);
-  const spotifyLink = $(".play-this-track-playlink--spotify").attr("href");
-  if (spotifyLink === undefined) {
+  let spotifyLink: string | null = null;
+  let startIdx = body.indexOf("play-this-track-playlink--spotify");
+  const endIdx = body.indexOf("</a>", startIdx);
+  {
+    let i = startIdx;
+    for (; i >= 0; i--) {
+      if (body[i] === "a" && body[i - 1] === "<") {
+        startIdx = i;
+        break;
+      }
+    }
+    if (i === 0) {
+      throw new Error("this should never happen");
+    }
+  }
+  {
+    const regex = new RegExp(/href="(.+)"/);
+    const res = regex.exec(body.substring(startIdx, endIdx));
+    if (res && res[1] && res[1].startsWith("https://open.spotify.com")) {
+      spotifyLink = res[1];
+    }
+  }
+  console.log(spotifyLink);
+  return null;
+
+  if (spotifyLink === null) {
     console.log("spotify link doesn't exist for", lastTrack.name);
     return song;
   }
