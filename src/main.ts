@@ -82,7 +82,7 @@ function checkValidConfig(parsedObj: any): asserts parsedObj is Config {
   if (
     typeof parsedObj === "object" &&
     parsedObj !== null &&
-    parsedObj.API_KEY &&
+    parsedObj.LASTFM_API_KEY &&
     parsedObj.USER_ID
   ) {
     return;
@@ -91,15 +91,15 @@ function checkValidConfig(parsedObj: any): asserts parsedObj is Config {
 }
 checkValidConfig(dotenvResult.parsed);
 const config: Config = {
-  apiKey: dotenvResult.parsed.API_KEY!,
+  apiKey: dotenvResult.parsed.LASTFM_API_KEY!,
   userId: dotenvResult.parsed.USER_ID!,
 };
 
-const API_ROOT = "http://ws.audioscrobbler.com/2.0/";
+const LASTFM_API_ROOT = "http://ws.audioscrobbler.com/2.0/";
 
 // TODO try catch
 async function getSongLinks() {
-  const recentTracksData: { recenttracks: { track: Track[] } } = await got(API_ROOT, {
+  const recentTracksData: { recenttracks: { track: Track[] } } = await got(LASTFM_API_ROOT, {
     searchParams: {
       method: "user.getrecenttracks",
       format: "json",
