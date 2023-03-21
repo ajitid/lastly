@@ -71,6 +71,7 @@ interface Song {
   title: string;
   artist: string;
   album: string;
+  nowPlaying: boolean;
   links: Record<string, string>;
   coverArt: Record<"small" | "medium" | "large", string> & { extralarge?: string };
 }
@@ -138,8 +139,9 @@ async function getSongLinks() {
 
   const song: Song = {
     title: lastTrack.name,
-    album: lastTrack.album["#text"],
     artist: lastTrack.artist["#text"],
+    album: lastTrack.album["#text"],
+    nowPlaying: lastTrack["@attr"]?.nowplaying === "true" ?? false,
     links: { lastfm: lastTrack.url },
     coverArt: {
       small: lastTrack.image.filter((im) => im.size === "medium")[0]!["#text"],
@@ -198,7 +200,7 @@ async function getSongLinks() {
         await grabMoreItemsUsingSongLink(appleMusicSongLink, song);
       }
     } catch (err) {
-      console.error("album couldn't be found in last.fm" /*, err */);
+      // console.error("album couldn't be found in last.fm", err);
     }
   }
   return song;
