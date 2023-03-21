@@ -155,7 +155,8 @@ async function getSongLinks() {
     await grabMoreItemsUsingSongLink(spotifyLink, song);
   } else {
     // console.log("spotify link doesn't exist for", lastTrack.name);
-    console.log("no spotify link, looking for album via lastfm...");
+    // console.log("no spotify link, looking for album via lastfm...");
+
     // while URL in lastfm use a slug name for album, artist and song in their URL
     // like using + for space instead of %20, and allowing ÷ as is
     // they don't mind accepting URLs encoded with encodeURI/encodeURIComponent
@@ -197,7 +198,7 @@ async function getSongLinks() {
         await grabMoreItemsUsingSongLink(appleMusicSongLink, song);
       }
     } catch (err) {
-      console.error("album couldn't be found in last.fm", err);
+      console.error("album couldn't be found in last.fm" /*, err */);
     }
   }
   return song;
@@ -206,7 +207,8 @@ async function getSongLinks() {
 async function main() {
   const links = await getSongLinks();
   if (!links) {
-    console.log("early `main` return");
+    // console.log("early `main` return");
+    return;
   }
   console.log(links);
 }
