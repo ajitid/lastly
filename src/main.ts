@@ -2,6 +2,8 @@ import dotenv from "dotenv";
 import got from "got";
 import { load as loadHtml } from "cheerio";
 
+// if you want to change the country, search for instances of "default to US" in this file
+
 interface Config {
   readonly apiKey: string;
   readonly userId: string;
@@ -95,6 +97,25 @@ const config: Config = {
   userId: dotenvResult.parsed.USER_ID!,
 };
 
+const grabMoreItemsUsingSongLink = async (songLink: string, song: Song) => {
+  // let's don't define country here and let it default to US, as it has most songs present
+  const streamingLinks: StreamingLinks = await got("https://api.song.link/v1-alpha.1/links", {
+    searchParams: {
+      url: songLink,
+    },
+  }).json();
+
+  const itunesEntity = Object.keys(streamingLinks.entitiesByUniqueId).filter((ent) =>
+    ent.startsWith("ITUNES_SONG::")
+  )[0]!;
+  // spotify provides album art as well, but chances to bump into a compilation cover art is higher
+  song.coverArt.extralarge = streamingLinks.entitiesByUniqueId[itunesEntity]!.thumbnailUrl;
+
+  for (const [platform, { url }] of Object.entries(streamingLinks.linksByPlatform)) {
+    song.links[platform] = url;
+  }
+};
+
 const LASTFM_API_ROOT = "http://ws.audioscrobbler.com/2.0/";
 
 // TODO try catch
@@ -130,25 +151,54 @@ async function getSongLinks() {
   const { body } = await got(lastTrack.url);
   const $ = loadHtml(body);
   const spotifyLink = $(".play-this-track-playlink--spotify").attr("href");
-  if (spotifyLink === undefined) {
-    console.log("spotify link doesn't exist for", lastTrack.name);
-    return song;
-  }
+  if (spotifyLink !== undefined) {
+    await grabMoreItemsUsingSongLink(spotifyLink, song);
+  } else {
+    // console.log("spotify link doesn't exist for", lastTrack.name);
+    console.log("no spotify link, looking for album via lastfm...");
+    // while URL in lastfm use a slug name for album, artist and song in their URL
+    // like using + for space instead of %20, and allowing ÷ as is
+    // they don't mind accepting URLs encoded with encodeURI/encodeURIComponent
+    try {
+      const enc = encodeURIComponent;
 
-  // let's don't define country here and let it default to US, as it has most songs present
-  const streamingLinks: StreamingLinks = await got("https://api.song.link/v1-alpha.1/links", {
-    searchParams: {
-      url: spotifyLink,
-    },
-  }).json();
+      let appleMusicAlbumId = "";
 
-  const spotifyEntity = Object.keys(streamingLinks.entitiesByUniqueId).filter((ent) =>
-    ent.startsWith("SPOTIFY_SONG::")
-  )[0]!;
-  song.coverArt.extralarge = streamingLinks.entitiesByUniqueId[spotifyEntity]!.thumbnailUrl;
+      {
+        // album URL might not exist as well so it'd throw
+        const albumHtml = await got(
+          `https://www.last.fm/music/${enc(song.artist)}/${enc(song.album)}/+partial/buylinks`
+        );
+        const $ = loadHtml(albumHtml.body);
+        const link = $('[data-analytics-label="itunes"]').attr("href");
+        if (link === undefined) {
+          throw new Error("URL cannot be parsed");
+        }
+        const url = new URL(link);
+        const albumPart = "/album/id";
+        const albumPartIdx = url.pathname.indexOf(albumPart);
+        appleMusicAlbumId = url.pathname.substring(albumPartIdx + albumPart.length);
+      }
 
-  for (const [platform, { url }] of Object.entries(streamingLinks.linksByPlatform)) {
-    song.links[platform] = url;
+      if (appleMusicAlbumId == "") {
+        throw new Error("Apple Music album ID couldn't be found");
+      }
+
+      {
+        // As we haven't told the country it'll default to US, which is fine as it has most songs present
+        const appleMusicAlbumHtml = await got(
+          `https://music.apple.com/album/some-album/${appleMusicAlbumId}`
+        );
+        const $ = loadHtml(appleMusicAlbumHtml.body);
+        const tracks: Array<{ name: string; url: string }> = JSON.parse(
+          $("script#schema\\:music-album").text()
+        ).tracks;
+        const appleMusicSongLink = tracks.find((t) => t.name === song.title)!.url;
+        await grabMoreItemsUsingSongLink(appleMusicSongLink, song);
+      }
+    } catch (err) {
+      console.error("album couldn't be found in last.fm", err);
+    }
   }
   return song;
 }
