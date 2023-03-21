@@ -84,7 +84,7 @@ function checkValidConfig(parsedObj: any): asserts parsedObj is Config {
   if (
     typeof parsedObj === "object" &&
     parsedObj !== null &&
-    parsedObj.LASTFM_API_KEY &&
+    parsedObj.API_KEY &&
     parsedObj.USER_ID
   ) {
     return;
@@ -93,7 +93,7 @@ function checkValidConfig(parsedObj: any): asserts parsedObj is Config {
 }
 checkValidConfig(dotenvResult.parsed);
 const config: Config = {
-  apiKey: dotenvResult.parsed.LASTFM_API_KEY!,
+  apiKey: dotenvResult.parsed.API_KEY!,
   userId: dotenvResult.parsed.USER_ID!,
 };
 
