@@ -104,11 +104,11 @@ async function getSongLinks() {
       method: "user.getrecenttracks",
       format: "json",
       api_key: config.apiKey,
-      limit: 2,
+      limit: 1,
       user: config.userId,
     },
   }).json();
-  const lastTrack = recentTracksData.recenttracks.track.filter((t) => !t["@attr"]?.nowplaying)[0];
+  const lastTrack = recentTracksData.recenttracks.track[0];
   if (lastTrack === undefined) {
     console.log("no track scrobbled yet");
     // TODO maybe need to throw
