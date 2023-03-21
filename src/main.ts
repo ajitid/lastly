@@ -69,6 +69,7 @@ interface Song {
   title: string;
   artist: string;
   album: string;
+  nowPlaying: boolean;
   links: Record<string, string>;
   coverArt: Record<"small" | "medium" | "large", string> & { extralarge?: string };
 }
@@ -82,7 +83,7 @@ function checkValidConfig(parsedObj: any): asserts parsedObj is Config {
   if (
     typeof parsedObj === "object" &&
     parsedObj !== null &&
-    parsedObj.LASTFM_API_KEY &&
+    parsedObj.API_KEY &&
     parsedObj.USER_ID
   ) {
     return;
@@ -91,7 +92,7 @@ function checkValidConfig(parsedObj: any): asserts parsedObj is Config {
 }
 checkValidConfig(dotenvResult.parsed);
 const config: Config = {
-  apiKey: dotenvResult.parsed.LASTFM_API_KEY!,
+  apiKey: dotenvResult.parsed.API_KEY!,
   userId: dotenvResult.parsed.USER_ID!,
 };
 
@@ -108,7 +109,7 @@ async function getSongLinks() {
       user: config.userId,
     },
   }).json();
-  const lastTrack = recentTracksData.recenttracks.track.filter((t) => !t["@attr"]?.nowplaying)[0];
+  const lastTrack = recentTracksData.recenttracks.track[0];
   if (lastTrack === undefined) {
     console.log("no track scrobbled yet");
     // TODO maybe need to throw
@@ -117,8 +118,9 @@ async function getSongLinks() {
 
   const song: Song = {
     title: lastTrack.name,
-    album: lastTrack.album["#text"],
     artist: lastTrack.artist["#text"],
+    album: lastTrack.album["#text"],
+    nowPlaying: lastTrack["@attr"]?.nowplaying === "true" ?? false,
     links: { lastfm: lastTrack.url },
     coverArt: {
       small: lastTrack.image.filter((im) => im.size === "medium")[0]!["#text"],
@@ -129,29 +131,29 @@ async function getSongLinks() {
 
   const { body } = await got(lastTrack.url);
   let spotifyLink: string | null = null;
-  let startIdx = body.indexOf("play-this-track-playlink--spotify");
-  const endIdx = body.indexOf("</a>", startIdx);
   {
-    let i = startIdx;
-    for (; i >= 0; i--) {
-      if (body[i] === "a" && body[i - 1] === "<") {
-        startIdx = i;
-        break;
+    let startIdx = body.indexOf("play-this-track-playlink--spotify");
+    const endIdx = body.indexOf("</a>", startIdx);
+    {
+      let i = startIdx;
+      for (; i >= 0; i--) {
+        if (body[i] === "a" && body[i - 1] === "<") {
+          startIdx = i;
+          break;
+        }
+      }
+      if (i === 0) {
+        throw new Error("this should never happen");
       }
     }
-    if (i === 0) {
-      throw new Error("this should never happen");
+    {
+      const regex = new RegExp(/href="(.+)"/);
+      const res = regex.exec(body.substring(startIdx, endIdx));
+      if (res && res[1] && res[1].startsWith("https://open.spotify.com")) {
+        spotifyLink = res[1];
+      }
     }
   }
-  {
-    const regex = new RegExp(/href="(.+)"/);
-    const res = regex.exec(body.substring(startIdx, endIdx));
-    if (res && res[1] && res[1].startsWith("https://open.spotify.com")) {
-      spotifyLink = res[1];
-    }
-  }
-  console.log(spotifyLink);
-  return null;
 
   if (spotifyLink === null) {
     console.log("spotify link doesn't exist for", lastTrack.name);

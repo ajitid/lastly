@@ -1,10 +1,11 @@
 {
-  "name": "lastly",
+  "name": "lastlink",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "go": "tsx src/main.ts"
+    "go": "tsx src/main.ts",
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
