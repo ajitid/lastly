@@ -98,6 +98,14 @@ const config: Config = {
   userId: dotenvResult.parsed.USER_ID!,
 };
 
+const useCoverArtFromAppleMusic = (coverArt: Song["coverArt"], thumbUrlOfASize: string) => {
+  const url = thumbUrlOfASize.substring(0, thumbUrlOfASize.lastIndexOf("/"));
+  coverArt.small = url + "/64x64.jpg";
+  coverArt.medium = url + "/174x174.jpg";
+  coverArt.large = url + "/300x300.jpg";
+  coverArt.extralarge = url + "/512x512.jpg";
+};
+
 const grabMoreItemsUsingSongLink = async (songLink: string, song: Song) => {
   // let's don't define country here and let it default to US, as it has most songs present
   const streamingLinks: StreamingLinks = await got("https://api.song.link/v1-alpha.1/links", {
@@ -110,7 +118,9 @@ const grabMoreItemsUsingSongLink = async (songLink: string, song: Song) => {
     ent.startsWith("ITUNES_SONG::")
   )[0]!;
   // spotify provides album art as well, but chances to bump into a compilation cover art is higher
-  song.coverArt.extralarge = streamingLinks.entitiesByUniqueId[itunesEntity]!.thumbnailUrl;
+  const thumbUrlOfSizeXL = streamingLinks.entitiesByUniqueId[itunesEntity]!.thumbnailUrl;
+  // for consistency we'll use the album art we got from Apple Music
+  useCoverArtFromAppleMusic(song.coverArt, thumbUrlOfSizeXL);
 
   for (const [platform, { url }] of Object.entries(streamingLinks.linksByPlatform)) {
     song.links[platform] = url;
