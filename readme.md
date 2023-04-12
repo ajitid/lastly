@@ -1,4 +1,4 @@
-# Lastlink
+# Lastly
 
 Get links of your last played (or now playing) song for different music streaming platforms. Your song should be scrobbled to Last.fm.
 
